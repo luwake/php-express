@@ -2,6 +2,10 @@
   "name" : "luwake/php-express",
   "description": "A pipeline framework use express.js api for php",
   "keywords": ["pipeline", "expressjs", "middleware", "framework"],
+  "authors": [{
+     "name": "Lu Biao",
+     "email": "lubiao39699492@163.com"
+  }],
   "license": "MIT",
   "require" : {
     "petrgrishin/pipe" : "^1.1",
