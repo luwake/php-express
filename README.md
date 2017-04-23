@@ -6,6 +6,34 @@ A pipeline framework use express.js api for php
 ```php
 $app = new Express();
 
+$app->get('/', function($req, $res, $next){
+  return $res->body('Hello World');
+});
+
+$app->listen();
+```
+
+# example 2
+
+```php
+$app = new Express();
+
+$app->route('/admin')->get('/', function($req, $res, $next){
+  return $res->body('Hello Admin');
+});
+
+$app->get('/', function($req, $res, $next){
+  return $res->body('Hello World');
+});
+
+$app->listen();
+```
+
+# example 3
+
+```php
+$app = new Express();
+
 $app->set('views', __DIR__ . '/views');
 
 $app->use('App\Middlewares\MethodOverride');
