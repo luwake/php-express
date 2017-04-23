@@ -9,6 +9,7 @@
     "type" : "composer",
     "url" : "https://packagist.phpcomposer.com"
   } ],
+  "license": "MIT",
   "autoload" : {
     "psr-4" : {
       "Luwake\\" : "src/"
