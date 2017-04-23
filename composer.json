@@ -5,10 +5,6 @@
     "gpolguere/path-to-regexp-php" : "dev-master",
     "evenement/evenement" : "^2.0"
   },
-  "repositories" : [ {
-    "type" : "composer",
-    "url" : "https://packagist.phpcomposer.com"
-  } ],
   "license": "MIT",
   "autoload" : {
     "psr-4" : {
