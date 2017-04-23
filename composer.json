@@ -1,13 +1,13 @@
 {
   "name" : "luwake/php-express",
+  "description": "A pipeline framework use express.js api for php",
+  "keywords": ["pipeline", "expressjs", "middleware", "framework"],
+  "license": "MIT",
   "require" : {
     "petrgrishin/pipe" : "^1.1",
     "gpolguere/path-to-regexp-php" : "dev-master",
     "evenement/evenement" : "^2.0"
   },
-  "license": "MIT",
-      "description": "A pipeline framework use express.js api for php",
-    "keywords": ["pipeline", "expressjs", "middleware", "framework"],
   "autoload" : {
     "psr-4" : {
       "Luwake\\" : "src/"
