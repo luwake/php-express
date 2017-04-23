@@ -6,6 +6,8 @@
     "evenement/evenement" : "^2.0"
   },
   "license": "MIT",
+      "description": "A pipeline framework use express.js api for php",
+    "keywords": ["pipeline", "expressjs", "middleware", "framework"],
   "autoload" : {
     "psr-4" : {
       "Luwake\\" : "src/"
