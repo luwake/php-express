@@ -156,9 +156,6 @@ class Router
             elseif(class_exists($handle)){
                 $handle = new $handle();
             }
-            elseif (strpos($handle, '::') !== false) {
-                $handle = explode('::', $handle, 2);
-            }
             elseif (strpos($handle, '@') !== false) {
                 $handle = explode('@', $handle, 2);
             }
@@ -209,6 +206,17 @@ class Router
             $request->attrs['_route'] = $route;
             
             if (strpos($request->path, $route) === 0) {
+                $request->route = array(
+                    'path'=>$path,
+                    'stack'=>array(
+                        'params'=>[],
+                        'path'=> $request->path,
+                        'keys'=> [],
+                        'regexp'=> null,
+                        'method'=> $request->method
+                    ),
+                    'methods'=>$method
+                );
                 return true;
             }
             
@@ -230,6 +238,19 @@ class Router
                     
                     $request->attrs[$key['name']] = $matches[$i];
                 }
+
+                $request->route = array(
+                    'path'=>$matches[0],
+                    'stack'=>array(
+                        'params'=>$matches,
+                        'path'=> $request->path,
+                        'keys'=> $keys,
+                        'regexp'=> $preg,
+                        'method'=> $request->method
+                    ),
+                    'methods'=>$method
+                );
+
                 return true;
             }
         }

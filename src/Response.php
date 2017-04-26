@@ -94,91 +94,96 @@ class Response extends Base
     {
         $this->app = $app;
     }
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::append()
-     */
+
     public function append($field, $value = null)
     {
-        // TODO Auto-generated method stub
         $this->headers[$field][] = $value;
         
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::attachment()
-     */
     public function attachment($filename = null)
     {
-        // TODO Auto-generated method stub
-        
+        if($filename && file_exists($filename)){
+            $this->set('Content-Disposition', 'attachment; filename="'.pathinfo($filename, PATHINFO_FILENAME).'"');
+
+            $this->set('Content-Type', mime_content_type($filename));
+        }
+        else{
+            $this->set('Content-Disposition', 'attachment');
+        }
+
+        return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::cookie()
-     */
     public function cookie($name, $value, $options = array())
     {
-        // TODO Auto-generated method stub
-        
+        $this->set('Set-Cookie', sprintf(
+            '%s=%s;path=%s;domain=%s;expires=%s',
+            $name,
+            $value,
+            $options['path']?:'/',
+            $options['domain'],
+            $options['expires']?:0
+        ));
+
+        return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::clearCookie()
-     */
     public function clearCookie($name, $options = array())
     {
-        // TODO Auto-generated method stub
-        
+        $this->set('Set-Cookie', sprintf(
+            '%s=%s;path=%s;domain=%s;expires=%s',
+            $name,
+            '',
+            $options['path']?:'/',
+            $options['domain'],
+            time()-3600
+        ));
+
+        return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::download()
-     */
     public function download($path, $filename = null, $fn = null)
     {
-        // TODO Auto-generated method stub
+
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::end()
-     */
     public function end($data = null, $encoding = null)
     {
         $this->send($data);
-        
-        if($encoding){
-            $this->set('Content-Type', 'text/html;charset=' . $encoding);
-        }
-        
-        if(!isset($this->headers['Content-Length'])){
-            $this->set('Content-Length', strlen($this->body));
-        }
-        
-        header(sprintf(
-            'HTTP/%s %d%s',
-            $this->protocol,
-            $this->status,
-            $this->phrase()
-        ));
-        
-        foreach ($this->headers as $name => $values) {
-            $name = $this->filter($name);
-            $first = true;
-            foreach ($values as $value) {
-                header(sprintf(
-                    '%s: %s',
-                    $name,
-                    $value
-                    ), $first);
-                $first = false;
+
+        if($this->headersSent != true){
+
+            if($encoding){
+                $this->set('Content-Type', 'text/html;charset=' . $encoding);
             }
+
+            if(!isset($this->headers['Content-Length'])){
+                $this->set('Content-Length', strlen($this->body));
+            }
+
+            header(sprintf(
+                'HTTP/%s %d%s',
+                $this->protocol,
+                $this->status,
+                $this->phrase()
+            ));
+
+            foreach ($this->headers as $name => $values) {
+                $name = $this->filter($name);
+                $first = true;
+                foreach ($values as $value) {
+                    header(sprintf(
+                        '%s: %s',
+                        $name,
+                        $value
+                    ), $first);
+                    $first = false;
+                }
+            }
+
+            $this->headersSent = true;
         }
         
         echo $this->body;
@@ -194,30 +199,15 @@ class Response extends Base
         return str_replace(' ', '-', ucwords(str_replace('-', ' ', $name)));
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::format()
-     */
     public function format($object)
     {
-        // TODO Auto-generated method stub
-        
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::get()
-     */
     public function get($field)
     {
-        // TODO Auto-generated method stub
         return $this->headers[$field];
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::json()
-     */
     public function json($body)
     {
         $this->send(json_encode($body));
@@ -232,37 +222,20 @@ class Response extends Base
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::links()
-     */
     public function links($links)
     {
-        // TODO Auto-generated method stub
-
-
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::location()
-     */
     public function location($path)
     {
-        // TODO Auto-generated method stub
         $this->append('Location', $path);
         
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::redirect()
-     */
     public function redirect($path, $status = null)
     {
-        // TODO Auto-generated method stub
         $this->status($status);
         
         $this->location($path);
@@ -284,24 +257,15 @@ class Response extends Base
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::sendFile()
-     */
     public function sendFile($path, $options = null, $fn = null)
     {
-        // TODO Auto-generated method stub
-        
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::sendStatus()
-     */
     public function sendStatus($statusCode)
     {
-        // TODO Auto-generated method stub
         $this->status = $statusCode;
+
+        $this->send($this->phrase());
         
         return $this;
     }
@@ -320,24 +284,11 @@ class Response extends Base
         return $this;
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::type()
-     */
     public function type($type)
     {
-        // TODO Auto-generated method stub
-        
     }
 
-    /**
-     * {@inheritDoc}
-     * @see \App\Interfaces\ResponseInterface::vary()
-     */
     public function vary($field)
     {
-        // TODO Auto-generated method stub
-        
     }
-
 }
