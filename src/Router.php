@@ -5,17 +5,18 @@ use PetrGrishin\Pipe\Pipe;
 
 class Router
 {
+
     public $mountpath;
-    
+
     protected $routes = array();
-    
+
     public function __construct($mountpath = '')
     {
-        if($mountpath){
+        if ($mountpath) {
             $this->mount($mountpath);
         }
     }
-    
+
     public function get($path = null, $callback = null)
     {
         $this->reslove(func_get_args(), 'GET');
@@ -50,24 +51,22 @@ class Router
         
         return $this;
     }
-    
+
     public function map($methods, $path = null, $callback = null)
     {
         $this->reslove(func_get_args());
-    
+        
         return $this;
     }
-    
+
     public function param($name, $callback)
-    {
-        
-    }
+    {}
 
     public function path()
     {
         return $this->mountpath;
     }
-    
+
     public function mount($mountpath = '')
     {
         $this->mountpath = rtrim($mountpath, '/');
@@ -90,26 +89,26 @@ class Router
         
         return $this;
     }
-    
+
     public function __call($method, $args)
     {
-        if($method == 'use'){
+        if ($method == 'use') {
             $this->reslove($args, 'ANY');
         }
         
         return $this;
     }
-    
+
     protected function reslove($args = [], $unshift = null)
     {
         if ($unshift) {
             array_unshift($args, $unshift);
         }
-    
+        
         if (0 == count($args)) {
             return false;
         }
-    
+        
         if (1 == count($args)) {
             $method = 'ANY';
             $path = '/';
@@ -123,152 +122,156 @@ class Router
             $path = array_shift($args);
             $handles = $args;
         }
-        foreach ($handles as $handle){
+        foreach ($handles as $handle) {
             $this->addHandle($method, $path, $handle);
         }
     }
-    
+
     protected function addHandle($method, $path, $handle)
     {
         if ($handle instanceof Router) {
             return $this->addRouter($method, $path, $handle);
         }
-    
-        if(!$handle instanceof \Closure){
-            $handle = function($request, $response, $next)use($handle){
+        
+        if (! $handle instanceof \Closure) {
+            $handle = function ($request, $response, $next) use ($handle) {
                 $handle = $this->generate($handle);
-                if(is_callable($handle)){
+                if (is_callable($handle)) {
                     return $handle($request, $response, $next);
                 }
                 return $next($request, $response);
             };
         }
-    
+        
         return $this->addRoute($method, $path, $handle);
     }
-    
+
     protected function generate($handle)
     {
-        if(is_string($handle)){
-            if(function_exists($handle)){
+        if (is_string($handle)) {
+            if (function_exists($handle)) {
                 return $handle;
-            }
-            elseif(class_exists($handle)){
+            } elseif (class_exists($handle)) {
                 $handle = new $handle();
-            }
-            elseif (strpos($handle, '@') !== false) {
+            } elseif (strpos($handle, '@') !== false) {
                 $handle = explode('@', $handle, 2);
             }
         }
-    
-        if(is_array($handle)){
-    
-            list($class, $method) = $handle;
-    
-            if(is_object($class)){
+        
+        if (is_array($handle)) {
+            
+            list ($class, $method) = $handle;
+            
+            if (is_object($class)) {
                 return $handle;
             }
-    
+            
             if ((new \ReflectionMethod($class, $method))->isStatic()) {
-                $handle = [$class, $method];
+                $handle = [
+                    $class,
+                    $method
+                ];
             } else {
-                $handle = [new $class, $method];
+                $handle = [
+                    new $class(),
+                    $method
+                ];
             }
         }
         return $handle;
     }
-    
+
     protected function addRouter($method, $path, Router $router)
     {
-        $this->addRoute($method, $path, function ($request, $response, $next) use($path, $router) {
-            return $router->mount($this->mountpath . rtrim($path, '/'))->handle($request, $response, $next);
+        $this->addRoute($method, $path, function ($request, $response, $next) use ($path, $router) {
+            return $router->mount($this->mountpath . rtrim($path, '/'))
+                ->handle($request, $response, $next);
         });
     }
-    
+
     protected function addRoute($method, $path, callable $callback)
     {
-        $this->routes[] = function ($request, $response, $next) use($method, $path, $callback) {
+        $this->routes[] = function ($request, $response, $next) use ($method, $path, $callback) {
             if ($this->matcher($request, $method, $path)) {
                 return $callback($request, $response, $next);
             }
             return $next($request, $response);
         };
     }
-    
+
     protected function matcher(Request &$request, $method, $path)
     {
         $request->attrs = [];
         
         if ($method == 'ANY' || (is_string($method) && $method == $request->method) || (is_array($method) && in_array($request->method, $method))) {
-    
+            
             $route = $this->mountpath . rtrim($path, '/');
-    
+            
             $request->attrs['_route'] = $route;
             
             if (strpos($request->path, $route) === 0) {
                 $request->route = array(
-                    'path'=>$path,
-                    'stack'=>array(
-                        'params'=>[],
-                        'path'=> $request->path,
-                        'keys'=> [],
-                        'regexp'=> null,
-                        'method'=> $request->method
+                    'path' => $path,
+                    'stack' => array(
+                        'params' => [],
+                        'path' => $request->path,
+                        'keys' => [],
+                        'regexp' => null,
+                        'method' => $request->method
                     ),
-                    'methods'=>$method
+                    'methods' => $method
                 );
                 return true;
             }
             
             $keys = array();
-    
+            
             $preg = \PathToRegexp::convert($route, $keys, array(
                 'end' => false
             ));
-    
+            
             $matches = \PathToRegexp::match($preg, $request->path);
-    
+            
             if (null != $matches) {
                 
                 $request->attrs['_matche'] = $matches[0];
                 
                 $matches = array_slice($matches, 1);
-    
+                
                 foreach ($keys as $i => $key) {
                     
                     $request->attrs[$key['name']] = $matches[$i];
                 }
-
+                
                 $request->route = array(
-                    'path'=>$matches[0],
-                    'stack'=>array(
-                        'params'=>$matches,
-                        'path'=> $request->path,
-                        'keys'=> $keys,
-                        'regexp'=> $preg,
-                        'method'=> $request->method
+                    'path' => $matches[0],
+                    'stack' => array(
+                        'params' => $matches,
+                        'path' => $request->path,
+                        'keys' => $keys,
+                        'regexp' => $preg,
+                        'method' => $request->method
                     ),
-                    'methods'=>$method
+                    'methods' => $method
                 );
-
+                
                 return true;
             }
         }
         return false;
     }
-    
+
     public function handle(Request $request, Response $response, $root = null)
     {
-        return Pipe::create($request, $response)
-            ->through($this->routes)
-            ->through(function ($request, $response, $next) use($root) {
-                if ($root) {
-                    return $root($request, $response);
-                }
-                return $next($request, $response);
-            })
+        return Pipe::create($request, $response)->through($this->routes)
+            ->through(function ($request, $response, $next) use ($root) {
+            if ($root) {
+                return $root($request, $response);
+            }
+            return $next($request, $response);
+        })
             ->then(function ($request, $response) {
-                return $response;
-            });
+            return $response;
+        });
     }
 }

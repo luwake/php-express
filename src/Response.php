@@ -3,20 +3,21 @@ namespace Luwake;
 
 class Response extends Base
 {
+
     public $app;
-    
+
     public $headersSent = false;
-    
+
     public $status = '200';
-    
+
     public $body;
-    
+
     public $locals;
-    
+
     public $protocol = '1.1';
-    
+
     protected $headers = array();
-    
+
     protected $phrases = [
         // INFORMATIONAL CODES
         100 => 'Continue',
@@ -87,9 +88,9 @@ class Response extends Base
         508 => 'Loop Detected',
         510 => 'Not Extended',
         511 => 'Network Authentication Required',
-        599 => 'Network Connect Timeout Error',
+        599 => 'Network Connect Timeout Error'
     ];
-    
+
     public function __construct(Express $app)
     {
         $this->app = $app;
@@ -104,104 +105,77 @@ class Response extends Base
 
     public function attachment($filename = null)
     {
-        if($filename && file_exists($filename)){
-            $this->set('Content-Disposition', 'attachment; filename="'.pathinfo($filename, PATHINFO_FILENAME).'"');
-
+        if ($filename && file_exists($filename)) {
+            $this->set('Content-Disposition', 'attachment; filename="' . pathinfo($filename, PATHINFO_FILENAME) . '"');
+            
             $this->set('Content-Type', mime_content_type($filename));
-        }
-        else{
+        } else {
             $this->set('Content-Disposition', 'attachment');
         }
-
+        
         return $this;
     }
 
     public function cookie($name, $value, $options = array())
     {
-        $this->set('Set-Cookie', sprintf(
-            '%s=%s;path=%s;domain=%s;expires=%s',
-            $name,
-            $value,
-            $options['path']?:'/',
-            $options['domain'],
-            $options['expires']?:0
-        ));
-
+        $this->set('Set-Cookie', sprintf('%s=%s;path=%s;domain=%s;expires=%s', $name, $value, $options['path'] ?: '/', $options['domain'], $options['expires'] ?: 0));
+        
         return $this;
     }
 
     public function clearCookie($name, $options = array())
     {
-        $this->set('Set-Cookie', sprintf(
-            '%s=%s;path=%s;domain=%s;expires=%s',
-            $name,
-            '',
-            $options['path']?:'/',
-            $options['domain'],
-            time()-3600
-        ));
-
+        $this->set('Set-Cookie', sprintf('%s=%s;path=%s;domain=%s;expires=%s', $name, '', $options['path'] ?: '/', $options['domain'], time() - 3600));
+        
         return $this;
     }
 
     public function download($path, $filename = null, $fn = null)
-    {
-
-    }
+    {}
 
     public function end($data = null, $encoding = null)
     {
         $this->send($data);
-
-        if($this->headersSent != true){
-
-            if($encoding){
+        
+        if ($this->headersSent != true) {
+            
+            if ($encoding) {
                 $this->set('Content-Type', 'text/html;charset=' . $encoding);
             }
-
-            if(!isset($this->headers['Content-Length'])){
+            
+            if (! isset($this->headers['Content-Length'])) {
                 $this->set('Content-Length', strlen($this->body));
             }
-
-            header(sprintf(
-                'HTTP/%s %d%s',
-                $this->protocol,
-                $this->status,
-                $this->phrase()
-            ));
-
+            
+            header(sprintf('HTTP/%s %d%s', $this->protocol, $this->status, $this->phrase()));
+            
             foreach ($this->headers as $name => $values) {
                 $name = $this->filter($name);
                 $first = true;
                 foreach ($values as $value) {
-                    header(sprintf(
-                        '%s: %s',
-                        $name,
-                        $value
-                    ), $first);
+                    header(sprintf('%s: %s', $name, $value), $first);
                     $first = false;
                 }
             }
-
+            
             $this->headersSent = true;
         }
         
         echo $this->body;
     }
-    
+
     protected function phrase()
     {
-        return isset($this->phrases[$this->status])?$this->phrases[$this->status]:'';
+        return isset($this->phrases[$this->status]) ? $this->phrases[$this->status] : '';
     }
-    
+
     protected function filter($name)
     {
         return str_replace(' ', '-', ucwords(str_replace('-', ' ', $name)));
     }
 
     public function format($object)
-    {
-    }
+    {}
 
     public function get($field)
     {
@@ -217,7 +191,7 @@ class Response extends Base
 
     public function jsonp($body)
     {
-        $this->send($this->app->_get('jsonp callback name') . '('.json_encode($body).')');
+        $this->send($this->app->_get('jsonp callback name') . '(' . json_encode($body) . ')');
         
         return $this;
     }
@@ -258,13 +232,12 @@ class Response extends Base
     }
 
     public function sendFile($path, $options = null, $fn = null)
-    {
-    }
+    {}
 
     public function sendStatus($statusCode)
     {
         $this->status = $statusCode;
-
+        
         $this->send($this->phrase());
         
         return $this;
@@ -272,11 +245,13 @@ class Response extends Base
 
     public function set($field, $value)
     {
-        $this->headers[$field] = array($value);
+        $this->headers[$field] = array(
+            $value
+        );
         
         return $this;
     }
-    
+
     public function status($code)
     {
         $this->status = $code;
@@ -285,10 +260,8 @@ class Response extends Base
     }
 
     public function type($type)
-    {
-    }
+    {}
 
     public function vary($field)
-    {
-    }
+    {}
 }
