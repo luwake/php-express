@@ -203,21 +203,26 @@ class Router
     {
         $request->attrs = [];
         
-        if ($method == 'ANY' || (is_string($method) && $method == $request->method) || (is_array($method) && in_array($request->method, $method))) {
+        if ($method == 'ANY' || (is_string($method) && $method == $request->getMethod()) || (is_array($method) && in_array($request->getMethod(), $method))) {
             
             $route = $this->mountpath . rtrim($path, '/');
             
-            $request->attrs['_route'] = $route;
+            $attrs = array();
             
-            if (strpos($request->path, $route) === 0) {
+            $attrs['_route'] = $route;
+            
+            if (strpos($request->getPath(), $route) === 0) {
+                
+                $request->attrs = $attrs;
+                
                 $request->route = array(
                     'path' => $path,
                     'stack' => array(
                         'params' => [],
-                        'path' => $request->path,
+                        'path' => $request->getPath(),
                         'keys' => [],
                         'regexp' => null,
-                        'method' => $request->method
+                        'method' => $request->getMethod()
                     ),
                     'methods' => $method
                 );
@@ -230,27 +235,29 @@ class Router
                 'end' => false
             ));
             
-            $matches = \PathToRegexp::match($preg, $request->path);
+            $matches = \PathToRegexp::match($preg, $request->getPath());
             
             if (null != $matches) {
                 
-                $request->attrs['_matche'] = $matches[0];
+                $attrs['_matche'] = $matches[0];
                 
                 $matches = array_slice($matches, 1);
                 
                 foreach ($keys as $i => $key) {
                     
-                    $request->attrs[$key['name']] = $matches[$i];
+                    $attrs[$key['name']] = $matches[$i];
                 }
+                
+                $request->attrs = $attrs;
                 
                 $request->route = array(
                     'path' => $matches[0],
                     'stack' => array(
                         'params' => $matches,
-                        'path' => $request->path,
+                        'path' => $request->getPath(),
                         'keys' => $keys,
                         'regexp' => $preg,
-                        'method' => $request->method
+                        'method' => $request->getMethod()
                     ),
                     'methods' => $method
                 );
