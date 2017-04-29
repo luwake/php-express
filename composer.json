@@ -18,6 +18,5 @@
     "psr-4" : {
       "Luwake\\" : "src/"
     }
-  },
-  "require-dev": {}
+  }
 }
