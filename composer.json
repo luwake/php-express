@@ -11,14 +11,13 @@
   "require" : {
     "petrgrishin/pipe" : "^1.1",
     "gpolguere/path-to-regexp-php" : "dev-master",
-    "evenement/evenement" : "^2.0"
+    "evenement/evenement" : "^2.0",
+    "brick/http": "dev-master"
   },
   "autoload" : {
     "psr-4" : {
       "Luwake\\" : "src/"
     }
   },
-  "require-dev": {
-    "brick/http": "dev-master"
-  }
+  "require-dev": {}
 }
