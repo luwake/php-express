@@ -39,4 +39,11 @@ class Response extends \Brick\Http\Response
         }
         return $value;
     }
+    
+    public function json($body)
+    {
+        $this->setContent(json_encode($body));
+        
+        return $this;
+    }
 }
