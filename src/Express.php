@@ -152,7 +152,7 @@ class Express extends Router
         $response = $this->handle(self::Request($this), self::Response($this));
         
         if ($response instanceof Response) {
-            $response->end();
+            $response->send();
         }
     }
 }
