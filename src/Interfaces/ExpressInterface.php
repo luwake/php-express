@@ -1,7 +1,7 @@
 <?php
 namespace Luwake\Interfaces;
 
-interface ExpressInterface
+interface ExpressInterface extends RouterInterface
 {
     public function disable($name);
     
