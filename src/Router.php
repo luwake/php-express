@@ -2,8 +2,9 @@
 namespace Luwake;
 
 use PetrGrishin\Pipe\Pipe;
+use Luwake\Interfaces\RouterInterface;
 
-class Router
+class Router implements RouterInterface
 {
 
     public $mountpath;
@@ -69,7 +70,7 @@ class Router
 
     public function mount($mountpath = '')
     {
-        $this->mountpath = rtrim($mountpath, '/');
+        $this->mountpath = $mountpath != '/' ? rtrim($mountpath, '/') : '/';
         
         return $this;
     }
@@ -184,7 +185,7 @@ class Router
     protected function addRouter($method, $path, Router $router)
     {
         $this->addRoute($method, $path, function ($request, $response, $next) use ($path, $router) {
-            return $router->mount($this->mountpath . rtrim($path, '/'))
+            return $router->mount($this->mountpath . ($path != '/' ? rtrim($path, '/') : '/'))
                 ->handle($request, $response, $next);
         });
     }
@@ -205,7 +206,7 @@ class Router
         
         if ($method == 'ANY' || (is_string($method) && $method == $request->getMethod()) || (is_array($method) && in_array($request->getMethod(), $method))) {
             
-            $route = $this->mountpath . rtrim($path, '/');
+            $route = $this->mountpath . ($path != '/' ? rtrim($path, '/') : '/');
             
             $attrs = array();
             

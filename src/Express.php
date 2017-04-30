@@ -2,8 +2,9 @@
 namespace Luwake;
 
 use Evenement\EventEmitterTrait;
+use Luwake\Interfaces\ExpressInterface;
 
-class Express extends Router
+class Express extends Router implements ExpressInterface
 {
     use EventEmitterTrait;
 
@@ -150,9 +151,8 @@ class Express extends Router
     public function listen()
     {
         $response = $this->handle(self::Request($this), self::Response($this));
-        
         if ($response instanceof Response) {
-            $response->send();
+            $response->end();
         }
     }
 }
