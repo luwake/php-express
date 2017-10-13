@@ -1,4 +1,5 @@
 vendor
+.git
 .idea
 .settings
 .buildpath

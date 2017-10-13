@@ -1,158 +1,142 @@
 <?php
 namespace Luwake;
 
-use Evenement\EventEmitterTrait;
-use Luwake\Interfaces\ExpressInterface;
-
-class Express extends Router implements ExpressInterface
+class Express extends Router
 {
-    use EventEmitterTrait;
 
-    public static function Router($mountpath = '')
+    public $engines = [];
+
+    public $request;
+
+    public $response;
+
+    public function __construct($mountpath = '', $locals = [])
     {
-        return new Router($mountpath);
-    }
-
-    public static function Request(Express $app)
-    {
-        return new Request($app);
-    }
-
-    public static function Response(Express $app)
-    {
-        return new Response($app);
-    }
-
-    public static function _static($callback, $options = [])
-    {
-        return function ($req, $res, $next) use ($callback, $options) {
-            return $callback($req, $res, $next, $options);
-        };
-    }
-
-    public $locals = array(
-        'case sensitive routing' => false,
-        'env' => 'development',
-        'etag' => false,
-        'jsonp callback name' => 'callback',
-        'json replacer' => null,
-        'json spaces' => false,
-        'query parser' => 'simple',
-        'strict routing' => false,
-        'subdomain offset' => 2,
-        'trust proxy' => false,
-        'views' => false,
-        'view cache' => true,
-        'view engine' => 'php',
-        'x-powered-by' => true
-    );
-
-    protected $disabled = array();
-
-    protected $engines = [];
-
-    public function __construct($mountpath = '')
-    {
-        parent::__construct($mountpath);
+        parent::__construct($mountpath, $locals);
         
-        $this->engine('php', function ($path, $locals) {
-            extract($locals);
-            ob_start();
-            require $path;
-            $conent = ob_get_contents();
-            ob_clean();
-            return $conent;
-        });
+        $env = getenv('APP_ENV') || 'development';
+        
+        $this->enable('x-powered-by');
+        $this->set('etag', 'weak');
+        $this->set('env', $env);
+        $this->set('query parser', 'extended');
+        $this->set('subdomain offset', 2);
+        $this->set('trust proxy', false);
+        
+        $this->set('view', View::class);
+        $this->set('views', explode(',', 'views'));
+        $this->set('jsonp callback name', 'callback');
+        
+        if ($env === 'production') {
+            $this->enable('view cache');
+        }
     }
 
-    public function disable($name)
+    public function get($path)
     {
-        $this->disabled[] = $name;
-        
+        if (func_num_args() === 1 && ! is_callable($path)) {
+            return $this->set($path);
+        }
+        $this->map('GET', func_get_args());
         return $this;
     }
 
-    public function disabled($name)
+    public function set($setting, $val = null)
     {
-        return in_array($name, $this->disabled) ? true : false;
-    }
-
-    public function enable($name)
-    {
-        if ($this->disable($name)) {
-            $this->disabled = array_merge(array_diff($this->disabled, array(
-                $name
-            )));
+        if (func_num_args() === 1) {
+            return isset($this->locals[$setting]) ? $this->locals[$setting] : true;
+        }
+        if ($this->enabled($setting)) {
+            $this->locals[$setting] = $val;
         }
         return $this;
     }
 
-    public function enabled($name)
+    public function enabled($setting)
     {
-        return ! in_array($name, $this->disabled) ? true : false;
+        return $this->set($setting) !== false ? true : false;
     }
 
-    public function engine($ext, $callback)
+    public function disabled($setting)
     {
-        $this->engines[$ext] = $callback;
-        
+        return $this->set($setting) === false ? true : false;
+    }
+
+    public function enable($setting)
+    {
+        $this->set($setting, true);
         return $this;
     }
 
-    public function _get($name)
+    public function disable($setting)
     {
-        if ($this->disabled($name)) {
-            return false;
-        }
-        return $this->locals[$name];
+        $this->set($setting, false);
+        return $this;
     }
 
-    public function set($name, $value)
+    public function engine($ext, $fn)
     {
-        if ($this->enabled($name)) {
-            $this->locals[$name] = $value;
+        if (is_callable($fn)) {
+            $extension = substr($ext, 0, 1) !== '.' ? '.' + $ext : $ext;
+            $this->engines[$extension] = $fn;
         }
         return $this;
     }
 
-    public function get($path = null, $callback = null)
+    public function render($name, $options, $callback)
     {
-        if (func_num_args() == 1 && ! is_callable($path)) {
-            return $this->_get($path);
-        }
-        
-        $this->reslove(func_get_args(), 'GET');
-        
-        return $this;
-    }
-
-    public function render($view, $locals = [], $callback = null)
-    {
-        $engine = $this->engines[$this->_get('view engine')];
-        
-        $path = $this->_get('views') . '/' . ltrim($view, '/') . '.' . trim($this->_get('view engine'), '.');
-        
-        if (! $engine) {
-            if ($callback) {
-                return $callback($path, new \Exception("template engine [{$this->_get('view engine')}] not exist"));
-            }
-            return false;
-        }
-        
-        if (! file_exists($path)) {
-            if ($callback) {
-                return $callback($path, new \Exception("template file [{$path}] not exist"));
-            }
-            return false;
-        }
-        return $engine($path, $locals);
+        return (new View($name, $this->locals))->render($options, $callback);
     }
 
     public function listen()
     {
-        $response = $this->handle(self::Request($this), self::Response($this));
-        if ($response instanceof Response) {
-            $response->end();
+        $fn = $this;
+        try {
+            $res = $fn($this->request(), $this->response(), $this->done());
+            if ($res instanceof Response) {
+                return $res->send();
+            }
+            return $this->serialize($res);
+        } catch (\Exception $err) {
+            return $this->exception($err);
         }
     }
-}
+
+    public function request()
+    {
+        if (! $this->request) {
+            $this->request = new Request($this);
+        }
+        return $this->request;
+    }
+
+    public function response()
+    {
+        if (! $this->response) {
+            $this->response = new Response($this);
+        }
+        return $this->response;
+    }
+
+    private function done()
+    {
+        return function ($req, $res) {
+            return $res;
+        };
+    }
+
+    private function serialize($res)
+    {
+        if (! is_string($res)) {
+            $res = json_encode($res);
+        }
+        return $this->response()
+            ->write($res)
+            ->send();
+    }
+
+    private function exception(\Exception $err)
+    {
+        dump($err);
+    }
+}    

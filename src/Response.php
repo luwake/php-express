@@ -1,188 +1,95 @@
 <?php
 namespace Luwake;
 
-use Luwake\Interfaces\ResponseInterface;
+use Opis\Http\Response as HttpResponse;
+use Luwake\Traits\ObjectTrait;
+use Luwake\Traits\ExtendTrait;
 
-class Response extends \Brick\Http\Response implements ResponseInterface
+class Response extends HttpResponse implements \ArrayAccess
 {
-    protected $app;
-    
-    protected $extends = [];
-    
+    use ObjectTrait,ExtendTrait;
+
+    public $app;
+
     public function __construct(Express $app)
     {
+        parent::__construct($app->request());
         $this->app = $app;
     }
-    
-    public function __set($name, $value)
-    {
-        if(property_exists($this, $name)){
-            $this->$name = $value;
-        }
-        else{
-            $this->extends[$name] = $value;
-        }
-    }
-    
-    public function __get($name)
-    {
-        if(property_exists($this, $name)){
-            return $this->$name;
-        }
-        else{
-            return isset($this->extends[$name])?$this->extends[$name]:null;
-        }
-    }
-    
-    public function extend($name, $callback)
-    {
-        $this->extends[$name] = $callback;
-    }
-    
-    public function __call($method, $args)
-    {
-        $value = $this->__get($method);
-    
-        if ($value && is_callable($value)) {
-            return call_user_func_array($value, $args);
-        }
-        return $value;
-    }
-    
+
     public function download($path, $filename = null, $fn = null)
-    {
-        // TODO Auto-generated method stub
-        
-    }
+    {}
 
     public function end($data = null, $encoding = null)
-    {
-        if($data){
-            $this->send($data);
-        }
-        
-        parent::send();
-    }
+    {}
 
     public function format($object)
-    {
-        // TODO Auto-generated method stub
-        
-    }
+    {}
 
     public function get($field)
     {
-        return $this->getHeader($field);
+        return isset($this->headers[$field]) ? $this->headers[$field] : false;
     }
 
     public function set($field, $value = null)
     {
-        $this->addHeader($field, $value);
-        
-        return $this;
+        if (is_array($field)) {
+            return $this->headers($field);
+        }
+        return $this->header($field, $value);
     }
 
     public function json($body = null)
     {
-        $this->setContent(json_encode($body));
-        
-        return $this;
+        return $this->write(json_encode($body))->contentType('application/json');
     }
 
     public function jsonp($body = null)
     {
-        $callback = $this->app->_get('jsonp callback name');
-        
-        $this->json($callback . '('. json_encode($body).')');
-        
-        return $this;
+        $callback = $this->app->get('jsonp callback name');
+        return $this->write($callback . '(' . json_encode($body) . ')')->contentType('application/json');
     }
 
     public function links($links)
-    {
-    }
+    {}
 
     public function location($path)
     {
         $this->set('Location', $path);
-        
         return $this;
     }
 
-    public function redirect($status = null, $path)
+    public function render($view, $locals = [], $handle = null)
     {
-        $this->status($status)->location($path);
-        
-        return $this;
+        return $this->app->render($view, $locals, $handle);
     }
 
-    public function render($view, $locals = [], $callback = null)
+    public function write($body = null)
     {
-        $this->send($this->app->render($view, $locals, $callback));
-        
-        return $this;
-    }
-
-    public function send($body = null)
-    {
-        $this->setContent($body);
-        
-        return $this;
+        return $this->body($body);
     }
 
     public function sendFile($path, $options = null, $fn = null)
-    {
-        // TODO Auto-generated method stub
-        
-    }
+    {}
 
     public function sendStatus($statusCode)
     {
-        $this->setStatusCode($statusCode)->send($this->getReasonPhrase());
-        
-        return $this;
-    }
-
-    public function status($code)
-    {
-        $this->setStatusCode($code);
-        
-        return $this;
-    }
-
-    public function type($type)
-    {
-        // TODO Auto-generated method stub
-        
+        return $this->status($statusCode);
     }
 
     public function vary($field)
-    {
-        // TODO Auto-generated method stub
-        
-    }
-    
+    {}
+
     public function append($field, $value = null)
     {
-        $this->headers[$field][] = $value;
-        
-        return $this;
+        return $this->set($field, $value);
     }
 
     public function attachment($filename = null)
-    {
-        // TODO Auto-generated method stub
-        
-    }
-    
-    public function cookie($name, $value, $options = [])
-    {
-        // TODO Auto-generated method stub
-    }
+    {}
 
     public function clearCookie($name, $options = [])
     {
-        // TODO Auto-generated method stub
-        
+        $this->deleteCookie($name, $options);
     }
 }

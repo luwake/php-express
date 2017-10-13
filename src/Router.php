@@ -1,285 +1,180 @@
 <?php
 namespace Luwake;
 
-use PetrGrishin\Pipe\Pipe;
-use Luwake\Interfaces\RouterInterface;
+use Luwake\Router\Route;
+use Luwake\Router\Param;
+use Evenement\EventEmitterTrait;
+use Evenement\EventEmitterInterface;
+use Luwake\Traits\ObjectTrait;
+use Luwake\Utils\Pipeline;
 
-class Router implements RouterInterface
+class Router implements \ArrayAccess, EventEmitterInterface
 {
+    use ObjectTrait,EventEmitterTrait;
 
-    public $mountpath;
+    public $locals = [];
 
-    protected $routes = array();
+    public $mountpath = '';
 
-    public function __construct($mountpath = '')
+    public $routes;
+
+    public $route;
+
+    public function __construct($mountpath = '', $locals = [])
     {
-        if ($mountpath) {
-            $this->mount($mountpath);
-        }
+        $this->mountpath = $mountpath;
+        $this->locals = $locals;
     }
 
-    public function get($path = null, $callback = null)
+    public function get($path)
     {
-        $this->reslove(func_get_args(), 'GET');
-        
+        $this->map('GET', func_get_args());
         return $this;
     }
 
-    public function post($path = null, $callback = null)
+    public function post($path)
     {
-        $this->reslove(func_get_args(), 'POST');
-        
+        $this->map('POST', func_get_args());
         return $this;
     }
 
-    public function put($path = null, $callback = null)
+    public function put($path)
     {
-        $this->reslove(func_get_args(), 'PUT');
-        
+        $this->map('PUT', func_get_args());
         return $this;
     }
 
-    public function delete($path = null, $callback = null)
+    public function delete($path)
     {
-        $this->reslove(func_get_args(), 'DELETE');
-        
+        $this->map('DELETE', func_get_args());
         return $this;
     }
 
-    public function all($path = null, $callback = null)
+    public function all($path)
     {
-        $this->reslove(func_get_args(), 'ANY');
-        
+        $this->map('ALL', func_get_args());
         return $this;
     }
 
-    public function map($methods, $path = null, $callback = null)
-    {
-        $this->reslove(func_get_args());
-        
-        return $this;
-    }
+    private $methods = [
+        'checkout',
+        'connect',
+        'copy',
+        'delete',
+        'get',
+        'head',
+        'lock',
+        'merge',
+        'mkactivity',
+        'mkcol',
+        'move',
+        'msearch',
+        'notify',
+        'options',
+        'patch',
+        'post',
+        'propfind',
+        'proppatch',
+        'purge',
+        'put',
+        'report',
+        'search',
+        'subscribe',
+        'trace',
+        'unlock',
+        'unsubscribe'
+    ];
 
-    public function param($name, $callback)
-    {}
-
-    public function path()
+    public function _use($fn)
     {
-        return $this->mountpath;
-    }
-
-    public function mount($mountpath = '')
-    {
-        $this->mountpath = $mountpath != '/' ? rtrim($mountpath, '/') : '/';
-        
-        return $this;
-    }
-
-    public function route($path = '')
-    {
-        $router = new Router($path);
-        
-        $this->_use($path, $router);
-        
-        return $router;
-    }
-
-    public function _use($path, $callback = null)
-    {
-        $this->reslove(func_get_args(), 'ANY');
-        
+        $this->map('ALL', func_get_args());
         return $this;
     }
 
     public function __call($method, $args)
     {
         if ($method == 'use') {
-            $this->reslove($args, 'ANY');
+            return call_user_func_array([
+                $this,
+                '_use'
+            ], $args);
+        }
+        if (in_array($method, $this->methods)) {
+            $this->map(strtoupper($method), $args);
         }
         
         return $this;
     }
 
-    protected function reslove($args = [], $unshift = null)
+    protected function map($method, $args)
     {
-        if ($unshift) {
-            array_unshift($args, $unshift);
-        }
-        
-        if (0 == count($args)) {
-            return false;
-        }
-        
-        if (1 == count($args)) {
-            $method = 'ANY';
-            $path = '/';
-            $handles = $args;
-        } elseif (2 == count($args)) {
-            $method = array_shift($args);
-            $path = '/';
-            $handles = $args;
-        } else {
-            $method = array_shift($args);
-            $path = array_shift($args);
-            $handles = $args;
-        }
-        foreach ($handles as $handle) {
-            $this->addHandle($method, $path, $handle);
-        }
-    }
-
-    protected function addHandle($method, $path, $handle)
-    {
-        if ($handle instanceof Router) {
-            return $this->addRouter($method, $path, $handle);
-        }
-        
-        if (! $handle instanceof \Closure) {
-            $handle = function ($request, $response, $next) use ($handle) {
-                $handle = $this->generate($handle);
-                if (is_callable($handle)) {
-                    return $handle($request, $response, $next);
-                }
-                return $next($request, $response);
-            };
-        }
-        
-        return $this->addRoute($method, $path, $handle);
-    }
-
-    protected function generate($handle)
-    {
-        if (is_string($handle)) {
-            if (function_exists($handle)) {
-                return $handle;
-            } elseif (class_exists($handle)) {
-                $handle = new $handle();
-            } elseif (strpos($handle, '@') !== false) {
-                $handle = explode('@', $handle, 2);
-            }
-        }
-        
-        if (is_array($handle)) {
-            
-            list ($class, $method) = $handle;
-            
-            if (is_object($class)) {
-                return $handle;
-            }
-            
-            if ((new \ReflectionMethod($class, $method))->isStatic()) {
-                $handle = [
-                    $class,
-                    $method
-                ];
+        if (count($args) !== 0) {
+            $path = $args[0];
+            $callbacks = [];
+            if (is_callable($path)) {
+                $callbacks = $args;
+                $path = '/';
             } else {
-                $handle = [
-                    new $class(),
-                    $method
-                ];
+                $callbacks = array_slice($args, 1);
             }
-        }
-        return $handle;
-    }
-
-    protected function addRouter($method, $path, Router $router)
-    {
-        $this->addRoute($method, $path, function ($request, $response, $next) use ($path, $router) {
-            return $router->mount($this->mountpath . ($path != '/' ? rtrim($path, '/') : '/'))
-                ->handle($request, $response, $next);
-        });
-    }
-
-    protected function addRoute($method, $path, callable $callback)
-    {
-        $this->routes[] = function ($request, $response, $next) use ($method, $path, $callback) {
-            if ($this->matcher($request, $method, $path)) {
-                return $callback($request, $response, $next);
-            }
-            return $next($request, $response);
-        };
-    }
-
-    protected function matcher(Request &$request, $method, $path)
-    {
-        $request->attrs = [];
-        
-        if ($method == 'ANY' || (is_string($method) && $method == $request->getMethod()) || (is_array($method) && in_array($request->getMethod(), $method))) {
-            
-            $route = $this->mountpath . ($path != '/' ? rtrim($path, '/') : '/');
-            
-            $attrs = array();
-            
-            $attrs['_route'] = $route;
-            
-            if (strpos($request->getPath(), $route) === 0) {
-                
-                $request->attrs = $attrs;
-                
-                $request->route = array(
-                    'path' => $path,
-                    'stack' => array(
-                        'params' => [],
-                        'path' => $request->getPath(),
-                        'keys' => [],
-                        'regexp' => null,
-                        'method' => $request->getMethod()
-                    ),
-                    'methods' => $method
-                );
-                return true;
-            }
-            
-            $keys = array();
-            
-            $preg = \PathToRegexp::convert($route, $keys, array(
-                'end' => false
-            ));
-            
-            $matches = \PathToRegexp::match($preg, $request->getPath());
-            
-            if (null != $matches) {
-                
-                $attrs['_matche'] = $matches[0];
-                
-                $matches = array_slice($matches, 1);
-                
-                foreach ($keys as $i => $key) {
-                    
-                    $attrs[$key['name']] = $matches[$i];
+            if ($callbacks && is_array($callbacks)) {
+                foreach ($callbacks as $fn) {
+                    $this->routes[] = [
+                        Route::class,
+                        $this->resolve($path),
+                        $method,
+                        $fn
+                    ];
                 }
-                
-                $request->attrs = $attrs;
-                
-                $request->route = array(
-                    'path' => $matches[0],
-                    'stack' => array(
-                        'params' => $matches,
-                        'path' => $request->getPath(),
-                        'keys' => $keys,
-                        'regexp' => $preg,
-                        'method' => $request->getMethod()
-                    ),
-                    'methods' => $method
-                );
-                
-                return true;
             }
         }
-        return false;
     }
 
-    public function handle(Request $request, Response $response, $root = null)
+    public function param($name)
     {
-        return Pipe::create($request, $response)->through($this->routes)
-            ->through(function ($request, $response, $next) use ($root) {
-            if ($root) {
-                return $root($request, $response);
+        $args = func_get_args();
+        if (count($args) !== 0) {
+            $keys = $args[0];
+            $callbacks = [];
+            if (is_callable($keys)) {
+                $callbacks = $args;
+                $keys = [];
+            } else {
+                $callbacks = array_slice($args, 1);
             }
-            return $next($request, $response);
-        })
-            ->then(function ($request, $response) {
-            return $response;
-        });
+            if ($callbacks && is_array($callbacks)) {
+                foreach ($callbacks as $fn) {
+                    $this->routes[] = [
+                        Param::class,
+                        $keys,
+                        $fn
+                    ];
+                }
+            }
+        }
+        
+        return $this;
+    }
+
+    public function route($path)
+    {
+        $router = new Router($this->resolve($path), $this->locals);
+        $this->routes[] = $router;
+        return $router;
+    }
+
+    public function path()
+    {
+        return $this->route->path;
+    }
+
+    protected function resolve($path)
+    {
+        return $this->mountpath . '/' . trim($path, '/');
+    }
+
+    public function __invoke($req, $res, $next)
+    {
+        return Pipeline::create($req, $res)->through($this->routes)->then($next);
     }
 }

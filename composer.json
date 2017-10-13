@@ -12,11 +12,23 @@
     "petrgrishin/pipe" : "^1.1",
     "gpolguere/path-to-regexp-php" : "dev-master",
     "evenement/evenement" : "^2.0",
-    "brick/http": "dev-master"
+    "aura/accept": "2.x-dev",
+    "symfony/var-dumper": "3.4.x-dev",
+    "opis/http": "2.0.x-dev"
   },
   "autoload" : {
     "psr-4" : {
       "Luwake\\" : "src/"
+    }
+  },
+  "suggest": {
+    "symfony/var-dumper": "Subtree split of the Symfony VarDumper Component",
+    "hassankhan/config": "Lightweight configuration file loader that supports PHP, INI, XML, JSON, and YAML files"
+  },
+  "repositories": {
+    "packagist": {
+      "type": "composer",
+      "url": "https://packagist.phpcomposer.com"
     }
   }
 }
