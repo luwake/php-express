@@ -22,7 +22,7 @@ $admin->get('/', function(Request $req, Response $res, $next)use($admin){
 });
 
 $app->get('/', function(Request $req, Response $res, $next){
-    return $res->write('<p>Hello World</p>');
+    return $res->body('<p>Hello World</p>');
 });
 
 $app->listen();
