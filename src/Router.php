@@ -2,155 +2,102 @@
 namespace Luwake;
 
 use Luwake\Router\Route;
-use Luwake\Router\Param;
-use Evenement\EventEmitterTrait;
-use Evenement\EventEmitterInterface;
-use Luwake\Traits\ObjectTrait;
-use Luwake\Utils\Pipeline;
+use PetrGrishin\Pipe\Pipe;
+use Luwake\Router\Layer;
 
-class Router implements \ArrayAccess, EventEmitterInterface
+class Router
 {
-    use ObjectTrait,EventEmitterTrait;
+    /**
+     * @var Router
+     */
+    public $router = null;
+    
+    public $path = '';
+    
+    private $stack = [];
 
-    public $locals = [];
-
-    public $mountpath = '';
-
-    public $routes;
-
-    public $route;
-
-    public function __construct($mountpath = '', $locals = [])
+    public function __construct($path = '/')
     {
-        $this->mountpath = $mountpath;
-        $this->locals = $locals;
+        $this->path = $path;
+        
+        $this->stack = [];
     }
 
-    public function get($path)
+    public function path()
     {
-        $this->map('GET', func_get_args());
-        return $this;
+        return $this->path;
     }
 
-    public function post($path)
+    public function resolve($path = '')
     {
-        $this->map('POST', func_get_args());
-        return $this;
-    }
-
-    public function put($path)
-    {
-        $this->map('PUT', func_get_args());
-        return $this;
-    }
-
-    public function delete($path)
-    {
-        $this->map('DELETE', func_get_args());
-        return $this;
-    }
-
-    public function all($path)
-    {
-        $this->map('ALL', func_get_args());
-        return $this;
-    }
-
-    private $methods = [
-        'checkout',
-        'connect',
-        'copy',
-        'delete',
-        'get',
-        'head',
-        'lock',
-        'merge',
-        'mkactivity',
-        'mkcol',
-        'move',
-        'msearch',
-        'notify',
-        'options',
-        'patch',
-        'post',
-        'propfind',
-        'proppatch',
-        'purge',
-        'put',
-        'report',
-        'search',
-        'subscribe',
-        'trace',
-        'unlock',
-        'unsubscribe'
-    ];
-
-    public function _use($fn)
-    {
-        $this->map('ALL', func_get_args());
-        return $this;
-    }
-
-    public function __call($method, $args)
-    {
-        if ($method == 'use') {
-            return call_user_func_array([
-                $this,
-                '_use'
-            ], $args);
+        if($this->router){
+            return rtrim(str_replace('//', '/', $this->router->resolve($this->path) . '/' . trim($path, '/')), '/');
         }
-        if (in_array($method, $this->methods)) {
-            $this->map(strtoupper($method), $args);
+        
+        return rtrim(str_replace('//', '/', $this->path . '/' . trim($path, '/')), '/');
+    }
+
+    public function param($name, $fn)
+    {
+        if (! $name) {
+            throw new \Exception('argument name is required');
         }
+        
+        if (! is_string($name)) {
+            throw new \Exception('argument name must be a string');
+        }
+        
+        if (! $fn) {
+            throw new \Exception('argument fn is required');
+        }
+        
+        if (! is_callable($fn)) {
+            throw new \Exception('argument fn must be a function');
+        }
+        
+        $this->params[$name][] = $fn;
         
         return $this;
     }
 
-    protected function map($method, $args)
+    public function handle(Request $req, Response $res, $next)
     {
-        if (count($args) !== 0) {
-            $path = $args[0];
-            $callbacks = [];
-            if (is_callable($path)) {
-                $callbacks = $args;
-                $path = '/';
-            } else {
-                $callbacks = array_slice($args, 1);
-            }
-            if ($callbacks && is_array($callbacks)) {
-                foreach ($callbacks as $fn) {
-                    $this->routes[] = [
-                        Route::class,
-                        $this->resolve($path),
-                        $method,
-                        $fn
-                    ];
-                }
-            }
-        }
+        return Pipe::create($req, $res)->through($this->stack)->then($next);
     }
 
-    public function param($name)
+    public function use($handler)
     {
-        $args = func_get_args();
-        if (count($args) !== 0) {
-            $keys = $args[0];
-            $callbacks = [];
-            if (is_callable($keys)) {
-                $callbacks = $args;
-                $keys = [];
-            } else {
-                $callbacks = array_slice($args, 1);
-            }
-            if ($callbacks && is_array($callbacks)) {
-                foreach ($callbacks as $fn) {
-                    $this->routes[] = [
-                        Param::class,
-                        $keys,
-                        $fn
-                    ];
+        $offset = 0;
+        $path = '/';
+        
+        if (! is_callable($handler)) {
+            $offset = 1;
+            $path = $handler;
+        }
+        
+        $fns = array_flatten(array_slice(func_get_args(), $offset));
+        
+        if (count($fns) === 0) {
+            throw new \Exception('app.use() requires middleware functions');
+        }
+        
+        foreach ($fns as $fn) {
+            
+            if($fn instanceof Router){
+                $fn->router = $this;
+                
+                if($path && $path != '/'){
+                    $fn->path = $path;
+                }else{
+                    $path = $fn->path;
                 }
             }
+            
+            $layer = new Layer($path, [], $fn);
+            
+            $layer->router = $this;
+            
+            $this->stack[] = $layer;
         }
         
         return $this;
@@ -158,23 +105,75 @@ class Router implements \ArrayAccess, EventEmitterInterface
 
     public function route($path)
     {
-        $router = new Router($this->resolve($path), $this->locals);
-        $this->routes[] = $router;
-        return $router;
+        $route = new Route($path);
+        
+        $route->router = $this;
+        
+        $layer = new Layer($path, [], $route);
+        
+        $layer->router = $this;
+        
+        $this->stack[] = $layer;
+        
+        return $route;
     }
 
-    public function path()
+    public function get($path)
     {
-        return $this->route->path;
+        $route = $this->route($path);
+        
+        $route->get(...array_slice(func_get_args(), 1));
+        
+        return $this;
     }
 
-    protected function resolve($path)
+    public function post($path)
     {
-        return $this->mountpath . '/' . trim($path, '/');
+        $route = $this->route($path);
+        
+        $route->post(...array_slice(func_get_args(), 1));
+        
+        return $this;
     }
 
-    public function __invoke($req, $res, $next)
+    public function put($path)
     {
-        return Pipeline::create($req, $res)->through($this->routes)->then($next);
+        $route = $this->route($path);
+        
+        $route->put(...array_slice(func_get_args(), 1));
+        
+        return $this;
+    }
+
+    public function delete($path)
+    {
+        $route = $this->route($path);
+        
+        $route->delete(...array_slice(func_get_args(), 1));
+        
+        return $this;
+    }
+
+    public function options($path)
+    {
+        $route = $this->route($path);
+        
+        $route->options(...array_slice(func_get_args(), 1));
+        
+        return $this;
+    }
+
+    public function all($path)
+    {
+        $route = $this->route($path);
+        
+        $route->all(...array_slice(func_get_args(), 1));
+        
+        return $this;
+    }
+    
+    public function __invoke(Request $req, Response $res, $next)
+    {
+        return $this->handle($req, $res, $next);
     }
 }
