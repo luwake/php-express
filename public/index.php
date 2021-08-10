@@ -5,24 +5,38 @@ use Luwake\Response;
 
 require __DIR__.'/../vendor/autoload.php';
 
-$app = new Express('/express');
+$app = Express::Application();
 
-$app->use(function(Request $req, Response $res, $next){
-    return $next($req, $res);
+$app->use(Express::static(__DIR__));
+
+$post = Express::Router();
+
+$post->get('/:id', function(Request $req, Response $res){
+    return $res->send('Hello Post:' . $req->params['id']);
 });
 
-$admin = $app->route('/admin');
-
-$admin->use(function(Request $req, Response $res, $next){
-    return $next($req, $res);
+$post->get('/', function(Request $req, Response $res){
+    return $res->send('Hello Post');
 });
 
-$admin->get('/', function(Request $req, Response $res, $next)use($admin){
-    return $res->jsonp(array('status'=>1,'msg'=>'操作失败'));
+$app->use('/post', $post);
+
+$api = Express::Router('/api');
+
+$api->use(Express::json());
+
+$api->get('/', function(Request $req, Response $res){
+    return [
+        'code' => 0,
+        'msg' => '',
+        'data' => [],
+    ];
 });
 
-$app->get('/', function(Request $req, Response $res, $next){
-    return $res->body('<p>Hello World</p>');
+$app->use($api);
+
+$app->get('/', function(Request $req, Response $res){
+    return $res->send('Hello World');
 });
 
-$app->listen();
+$app->listen(8080);
