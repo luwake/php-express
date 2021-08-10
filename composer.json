@@ -1,34 +1,34 @@
 {
-  "name" : "luwake/php-express",
-  "description": "A pipeline framework use express.js api for php",
-  "keywords": ["pipeline", "expressjs", "middleware", "framework"],
-  "authors": [{
-     "name": "Lu Biao",
-     "email": "lubiao39699492@163.com"
-  }],
-  "minimum-stability":"dev",
-  "license": "MIT",
-  "require" : {
-    "petrgrishin/pipe" : "^1.1",
-    "gpolguere/path-to-regexp-php" : "dev-master",
-    "evenement/evenement" : "^2.0",
-    "aura/accept": "2.x-dev",
-    "symfony/var-dumper": "3.4.x-dev",
-    "opis/http": "2.0.x-dev"
-  },
-  "autoload" : {
-    "psr-4" : {
-      "Luwake\\" : "src/"
-    }
-  },
-  "suggest": {
-    "symfony/var-dumper": "Subtree split of the Symfony VarDumper Component",
-    "hassankhan/config": "Lightweight configuration file loader that supports PHP, INI, XML, JSON, and YAML files"
-  },
-  "repositories": {
-    "packagist": {
-      "type": "composer",
-      "url": "https://packagist.phpcomposer.com"
-    }
-  }
+	"name" : "luwake/php-express",
+	"description" : "A pipeline framework use express.js api for php",
+	"keywords" : [
+		"pipeline",
+		"expressjs",
+		"middleware",
+		"framework"
+	],
+	"authors" : [{
+			"name" : "Lu Biao",
+			"email" : "lubiao39699492@163.com"
+		}
+	],
+	"minimum-stability" : "dev",
+	"license" : "MIT",
+	"require" : {
+		"react/http" : "^1.3",
+		"petrgrishin/pipe" : "dev-master",
+		"gpolguere/path-to-regexp-php" : "dev-master",
+		"gumlet/php-image-resize" : "dev-master"
+	},
+	"autoload" : {
+		"psr-4" : {
+			"Luwake\\" : "src/"
+		},
+		"files" : [
+			"functions.php"
+		]
+	},
+	"suggest" : {
+		"symfony/var-dumper" : "Subtree split of the Symfony VarDumper Component"
+	}
 }
