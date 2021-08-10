@@ -1,51 +1,71 @@
 # php-express
-A pipeline framework use express.js api for php
+A pipeline framework use express.js api and reactphp framework for php
 
-# example
+# example 
 
 ```php
-$app = new Express();
+$app = Express::Application();
 
-$app->get('/', function($req, $res, $next){
-  return $res->body('Hello World');
+$app->get('/', function(Request $req, Response $res){
+    return $res->send('Hello World');
 });
 
-$app->listen();
+$app->listen(8080);
 ```
 
-# example 2
+# example 2 sub router
 
 ```php
-$app = new Express();
+$app = Express::Application();
 
-$app->route('/admin')->get('/', function($req, $res, $next){
-  return $res->body('Hello Admin');
+$post = Express::Router();
+
+$post->get('/:id', function(Request $req, Response $res){
+    return $res->send('Hello Post:' . $req->params['id']);
 });
 
-$app->get('/', function($req, $res, $next){
-  return $res->body('Hello World');
+$post->get('/', function(Request $req, Response $res){
+    return $res->send('Hello Post');
 });
 
-$app->listen();
+$app->use('/post', $post);
+
+$app->get('/', function(Request $req, Response $res){
+    return $res->send('Hello World');
+});
+
+$app->listen(8080);
 ```
 
-# example 3
+# example 3 middleware use
 
 ```php
-$app = new Express();
+$app = Express::Application();
 
-$app->set('views', __DIR__ . '/views');
+$app->use(Express::static(__DIR__));
 
-$app->use('App\Middlewares\MethodOverride');
+$api = Express::Router('/api');
 
-$app->use('/admin', require __DIR__ . '/routes/admin.php');
+$api->use(Express::json());
 
-$app->use('/', require __DIR__ . '/routes/home.php');
+$api->get('/', function(Request $req, Response $res){
+    return [
+        'code' => 0,
+        'msg' => '',
+        'data' => [],
+    ];
+});
 
-$app->listen();
+$app->use($api);
+
+$app->get('/', function(Request $req, Response $res){
+    return $res->send('Hello World');
+});
+
+$app->listen(8080);
 ```
 # todo
 some method need complete
 
 # log
-use other library instead request and response
+
