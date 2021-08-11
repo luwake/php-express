@@ -17,8 +17,7 @@
 	"require" : {
 		"react/http" : "^1.3",
 		"petrgrishin/pipe" : "dev-master",
-		"gpolguere/path-to-regexp-php" : "dev-master",
-		"gumlet/php-image-resize" : "dev-master"
+		"gpolguere/path-to-regexp-php" : "dev-master"
 	},
 	"autoload" : {
 		"psr-4" : {
