@@ -39,25 +39,7 @@ class Statics
                 $file = $this->root . $path;
                 $ext = pathinfo($path, PATHINFO_EXTENSION);
                 if (file_exists($file)) {
-                    switch ($ext) {
-                        case 'jpg':
-                        case 'jpeg':
-                        case 'png':
-                            $image = new ImageResize($file);
-                            
-                            $size = isset($req->query['size']) ? $req->query['size'] : null;
-                            if ($size) {
-                                list ($width, $height) = explode('x', $size);
-                                $image->crop($width, $height, true, ImageResize::CROPCENTER);
-                            }
-                            
-                            $res->send($image->getImageAsString());
-                            break;
-                        case 'gif':
-                        default:
-                            $res->send(file_get_contents($file));
-                            break;
-                    }
+                    $res->send(file_get_contents($file));
                     return $res->type($ext);
                 }
             }
