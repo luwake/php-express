@@ -3,7 +3,6 @@ namespace Luwake\Middlewares;
 
 use Luwake\Request;
 use Luwake\Response;
-use Gumlet\ImageResize;
 
 class Statics
 {
